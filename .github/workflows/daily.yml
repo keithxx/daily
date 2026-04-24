@@ -1,0 +1,42 @@
+name: Daily Stock Briefing
+
+on:
+  schedule:
+    # UTC 23:00 = Singapore 07:00 (next day). GitHub uses UTC.
+    # Cron format: minute hour day month weekday
+    - cron: '0 23 * * *'
+  workflow_dispatch:  # 允许在 GitHub 网页上手动点按钮触发，方便测试
+
+jobs:
+  send-briefing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run briefing script
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: python briefing.py
+
+      - name: Upload debug HTML on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: briefing-debug
+          path: latest_briefing.html
+          if-no-files-found: ignore
